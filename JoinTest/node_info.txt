@@ -1,0 +1,10 @@
+NODE
+id: 1
+node_count: 1
+reliable: 1
+ip_list
+ip: 47.99.47.195
+ip_type: clientIP
+s_count: 1
+ip_list_ends
+end_node
