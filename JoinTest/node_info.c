@@ -129,7 +129,7 @@ struct Node* file2struct(char *filename) {
             prev = prev->next_node;
         }
     }
-    prev->next_node = NULL;
+    //prev->next_node = NULL;
     return header->next_node;
 }
 
@@ -377,9 +377,9 @@ int split(char dst[][80], char *str, const char *spl) {
 
 // int main() {
 //     struct Node *node1 = file2struct("node_info.txt");
-//     struct Node *node2 = file2struct("node_info.txt");
+//     //struct Node *node2 = file2struct("node_info.txt");
 
-//     print_node(node2);
-//     node_merge(node1, node2);
+//     print_node(node1);
+//     //node_merge(node1, node2);
 //     // print_node(node1);
 // }

@@ -152,7 +152,7 @@ struct Node* register_node(char *target_ip) {
 
     struct Node *ret_node = (struct Node*)malloc(sizeof(struct Node));
     ret_node = convert_buf_to_node(reply_msg.buf);
-
+    
     return ret_node;
 }
 
@@ -247,17 +247,16 @@ int join(char *server_ip, int use_cache) {
     // todo 如果发生冲突
     local_node = (struct Node*)malloc(sizeof(struct Node));
     local_node = file2struct(FILENAME);
-    printf("LOCAL NODE\n\n");
+    printf("LOCAL NODE: \n");
     print_node(local_node);
     node_merge(local_node, server_node);
     
-    struct Node *tmp_node = (struct Node*)malloc(sizeof(struct Node));
     struct Node *p;
     for (p = local_node;p != NULL;p = p->next_node) {
         struct IP *ip;
         for (ip = p->ip_list;ip != NULL;ip = ip->next_ip) {
             if (strcmp(ip->ip, server_ip) == 0) {
-                printf("is server ip, should skip\n");
+                printf("is server ip, should skip, ip: %s\n", ip->ip);
                 continue;
             }
             // todo 判断是否为本机ip, 如果是的话，就不注册
@@ -265,12 +264,12 @@ int join(char *server_ip, int use_cache) {
                 continue;
             }
             if (is_intranet(ip->ip)) {
-                printf("should merge\n");
                 init_socket();
-                printf("ip: %s\n", ip->ip);
-                tmp_node = register_node(ip->ip);
+                struct Node *tmp_node = register_node(ip->ip);
                 if(node_merge(local_node, tmp_node) == -1) {
                     // todo recheck
+                    printf("LOCAL NODE AFTER MERGE: \n");
+                    print_node(local_node);
                     send_recheck_msg(ip->ip);
                 }
             }
