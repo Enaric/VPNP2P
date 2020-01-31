@@ -130,7 +130,7 @@ struct Node* register_node(char *target_ip) {
         printf("send message failed\n");
         exit(1);
     }
-
+    printf("here");
     // 接收server传回的信息
     struct Message reply_msg;
     if (recv_msg_over_socket(&reply_msg, client_socket_fd) < 0) {
@@ -251,12 +251,13 @@ int join(char *server_ip, int use_cache) {
     print_node(local_node);
     node_merge(local_node, server_node);
     
+    struct Node *tmp_node = (struct Node*)malloc(sizeof(struct Node));
     struct Node *p;
     for (p = local_node;p != NULL;p = p->next_node) {
         struct IP *ip;
         for (ip = p->ip_list;ip != NULL;ip = ip->next_ip) {
             if (strcmp(ip->ip, server_ip) == 0) {
-                printf("is server ip, should skip, ip: %s\n", ip->ip);
+                printf("is server ip, should skip\n");
                 continue;
             }
             // todo 判断是否为本机ip, 如果是的话，就不注册
@@ -265,11 +266,9 @@ int join(char *server_ip, int use_cache) {
             }
             if (is_intranet(ip->ip)) {
                 init_socket();
-                struct Node *tmp_node = register_node(ip->ip);
+                tmp_node = register_node(ip->ip);
                 if(node_merge(local_node, tmp_node) == -1) {
                     // todo recheck
-                    printf("LOCAL NODE AFTER MERGE: \n");
-                    print_node(local_node);
                     send_recheck_msg(ip->ip);
                 }
             }

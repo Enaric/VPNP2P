@@ -8,3 +8,23 @@ ip_type: clientIP
 s_count: 1
 ip_list_ends
 end_node
+NODE
+id: 2
+node_count: 1
+reliable: 1
+ip_list
+ip: 47.99.47.195
+ip_type: clientIP
+s_count: 1
+ip_list_ends
+end_node
+NODE
+id: 4423
+node_count: 1
+reliable: 1
+ip_list
+ip: 127.0.0.1
+ip_type: clientIP
+s_count: 0
+ip_list_ends
+end_node
