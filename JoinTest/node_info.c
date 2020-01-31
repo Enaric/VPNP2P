@@ -129,7 +129,7 @@ struct Node* file2struct(char *filename) {
             prev = prev->next_node;
         }
     }
-    //prev->next_node = NULL;
+    prev->next_node = NULL;
     return header->next_node;
 }
 
