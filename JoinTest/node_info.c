@@ -47,9 +47,9 @@ int struct2file(struct Node *node, char *filename) {
             fprintf(fp, "s_count: %d\n", ip->s_count);
         }
         fprintf(fp, "ip_list_ends\n");
-        printf("ip_list_ends\n");
+        fprintf(fp, "end_node\n");
     }
-    fprintf(fp, "end_node\n");
+   
 
     fclose(fp);
 
@@ -60,15 +60,16 @@ struct Node* file2struct(char *filename) {
     FILE *fp;
     char *strline;
     char buffer[255];
-    struct Node *node_new = NULL, *node_tail = NULL;
+    // todo 不用 node_tail
+    struct Node *node_new = (struct Node*)malloc(sizeof(struct Node));
     struct Node *header = (struct Node*)malloc(sizeof(struct Node));
 
     header->id = 0;
-    header->next_node = NULL;
-    node_tail = header;
+    header->next_node = node_new;
+    struct Node *prev = header;
 
-    struct IP *ip_new = NULL;
-    struct IP *ip_header = NULL;
+    struct IP *ip_new = (struct IP*)malloc(sizeof(struct IP));
+    struct IP *ip_header = (struct IP*)malloc(sizeof(struct IP));
     fp = fopen(filename, "r+");
     if (fp == NULL) {
         printf("is NULL\n");
@@ -76,12 +77,11 @@ struct Node* file2struct(char *filename) {
     while (fgets(buffer, 255, (FILE*) fp)) {
         strline = &buffer[0];
         strline[strlen(strline) - 1] = 0;
+        // printf("strline: %s\n", strline);
         if (startsWith("NODE", strline)) {
             // 是一个Node的开始
-            node_new = (struct Node*)malloc(sizeof(struct Node));
-            node_new->next_node = NULL;
-            node_tail->next_node = node_new;
-            node_tail = node_new;
+            // node_new = (struct Node*)malloc(sizeof(struct Node));
+            // node_new->next_node = NULL;
         } else if (startsWith("id: ", strline)) {
             // Node的id
             //printf("line is: %s, len is: %d\n", strline, strlen(strline));
@@ -95,11 +95,7 @@ struct Node* file2struct(char *filename) {
             strline = strline + 10;
             node_new->reliable = atoi(strline);
         } else if (startsWith("ip_list_ends", strline)) {
-            free(ip_new);
-            ip_new = NULL;
             ip_header->next_ip = NULL;
-            free(ip_header);
-            ip_header = NULL;
         } else if (startsWith("ip: ", strline)) {
             strline = strline + 4;
             char *ip = strip(strline);
@@ -118,7 +114,7 @@ struct Node* file2struct(char *filename) {
             struct IP *ip_tmp = (struct IP*)malloc(sizeof(struct IP));
             ip_tmp->next_ip = NULL;
             ip_new->next_ip = ip_tmp;
-            ip_new = ip_tmp;
+            ip_new = ip_new->next_ip;
         } else if (startsWith("ip_list", strline)) {
             // ip列表的开始
             ip_new = (struct IP*)malloc(sizeof(struct IP));
@@ -127,11 +123,13 @@ struct Node* file2struct(char *filename) {
             ip_new->next_ip = NULL;
             node_new->ip_list = ip_new;
         } else if (startsWith("end_node", strline)) {
-            // do nothing
-            break;
+            struct Node *node_next = (struct Node*)malloc(sizeof(struct Node));
+            node_new->next_node = node_next;
+            node_new = node_new->next_node;
+            prev = prev->next_node;
         }
     }
-
+    prev->next_node = NULL;
     return header->next_node;
 }
 
@@ -203,101 +201,185 @@ int ip_list_merge(struct IP *ip1, struct IP *ip2) {
 
 // 集群信息合并，结果统一放在第一个node中
 // 如果发生强冲突 返回 -1
-int node_merge(struct Node *node1, struct Node* node2) {
-    struct Node *node_tail = NULL;
-
-    for (node_tail = node1;node_tail->next_node != NULL;node_tail = node_tail->next_node) {
-        // 遍历到node1的最后一个节点
-    }
-
-    struct Node *node_ptr = NULL;
-    for (node_ptr = node2;node_ptr != NULL;node_ptr = node_ptr->next_node) {
-        struct Node *node_tmp = NULL;
-        int flag = 1; // 是否需要合并到链表尾部
-        for (node_tmp = node1;node_tmp != NULL; node_tmp = node_tmp->next_node) {
-            if (node_tmp->id != node_ptr->id) {
-                continue;
-            } else {
+int node_merge(struct Node* node1, struct Node* node2) {
+    // printf("node1: \n");
+    // print_node(node1);
+    // printf("node2: \n");
+    // print_node(node2);
+    struct Node *ptr1;
+    struct Node *ptr2;
+    struct Node *remain = (struct Node*)malloc(sizeof(struct Node));
+    struct Node *p = (struct Node*)malloc(sizeof(struct Node));
+    struct Node *prev;
+    prev = remain;
+    remain->next_node = p;
+    
+    for (ptr2 = node2; ptr2 != NULL; ptr2 = ptr2->next_node) {
+        int flag = 1;
+        for (ptr1 = node1; ptr1 != NULL; ptr1 = ptr1->next_node) {
+            if (ptr1->id == ptr2->id) {
                 flag = 0;
-            }
-            if (node_ptr->node_count > node_tmp->node_count) {
-                node_tmp->node_count = node_ptr->node_count;
-                node_tmp->ip_list = node_ptr->ip_list;
-                node_tmp->reliable = node_ptr->reliable;
-            } else if (node_ptr->node_count == node_tmp->node_count) {
-                if (ip_list_merge(node_tmp->ip_list, node_ptr->ip_list) == -1) {
-                    // 强冲突
-                    printf("need recheck\n");
-                    return -1;
+                if (ptr1->node_count < ptr2->node_count) {
+                    ptr1->node_count = ptr2->node_count;
+                    ptr1->reliable = ptr2->reliable;
+                    ptr1->ip_list = ptr2->ip_list;
                 }
+                // todo node_count相等
             }
         }
-
-        // 没有相同id，直接合并到链表尾部
         if (flag) {
-            node_tail->next_node = node_ptr;
-            node_tail = node_tail->next_node;
+            p->id = ptr2->id;
+            p->node_count = ptr2->node_count;
+            p->reliable = ptr2->reliable;
+            p->ip_list = ptr2->ip_list;
+            p = p->next_node;
+            prev = prev->next_node;
         }
     }
-    return 1;
+    for (ptr1 = node1; ptr1->next_node != NULL; ptr1 = ptr1->next_node) {
+
+    }
+    prev->next_node = NULL;
+    ptr1->next_node = remain->next_node;
+}
+
+int contain_node(struct Node *list, struct Node *node) {
+    struct Node *tmp;
+    for (tmp = list; tmp != NULL; tmp = tmp->next_node) {
+        if (tmp->id == node->id) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+void print_node(struct Node *node) {
+    struct Node *ptr = NULL;
+    struct IP *ip = NULL;
+    for (ptr = node;ptr != NULL;ptr = ptr->next_node) {
+        printf("node id: %d, node count: %d\n", ptr->id, ptr->node_count);
+        printf("node ip list: \n");
+        for (ip = ptr->ip_list;ip != NULL;ip = ip->next_ip) {
+            printf("ip: %s, type: %s, s_count: %d\n", ip->ip, ip->type, ip->s_count);
+        }
+    }
+}
+
+struct Node* convert_buf_to_node(char *buf) {
+    char dst[50][80];
+    int cnt = split(dst, buf, "\n");
+
+    struct Node *node_new = (struct Node*)malloc(sizeof(struct Node));
+    struct Node *header = (struct Node*)malloc(sizeof(struct Node));
+
+    header->id = 0;
+    header->next_node = node_new;
+    struct Node *prev = header;
+
+    struct IP *ip_new = NULL;
+    struct IP *ip_header = NULL;
+
+    for (int i = 0;i < cnt;i++) {
+        if (startsWith("NODE", dst[i])) {
+            // 是一个Node的开始
+        } else if (startsWith("id:", dst[i])) {
+            char id[10];
+            memcpy(id, dst[i] + 4, 10);
+            node_new->id = atoi(id);
+        } else if (startsWith("node_count:", dst[i])) {
+            char node_count[10];
+            memcpy(node_count, dst[i] + 12, 10);
+            node_new->node_count = atoi(node_count);
+        } else if (startsWith("reliable:", dst[i])) {
+            char reliable[10];
+            memcpy(reliable, dst[i] + 10, 10);
+            node_new->reliable = atoi(reliable);
+        } else if (startsWith("ip_list_ends", dst[i])) {
+            ip_header->next_ip = NULL;
+        } else if (startsWith("ip:", dst[i])) {
+            char ip[20];
+            memcpy(ip, dst[i] + 4, 20);
+            strcpy(ip_new->ip, ip);
+        } else if (startsWith("ip_type:", dst[i])) {
+            char ip_type[10];
+            memcpy(ip_type, dst[i] + 9, 10);
+            strcpy(ip_new->type, ip_type);
+        } else if (startsWith("s_count:", dst[i])) {
+            char s_count[10];
+            memcpy(s_count, dst[i] + 9, 10);
+            ip_new->s_count = atoi(s_count);
+
+            ip_header = ip_header->next_ip;
+            struct IP *ip_tmp = (struct IP*)malloc(sizeof(struct IP));
+            ip_tmp->next_ip = NULL;
+            ip_new->next_ip = ip_tmp;
+            ip_new = ip_tmp;
+        } else if (startsWith("ip_list", dst[i])) {
+            // ip列表的开始
+            ip_new = (struct IP*)malloc(sizeof(struct IP));
+            ip_header = (struct IP*)malloc(sizeof(struct IP));
+            ip_header->next_ip = ip_new;
+            ip_new->next_ip = NULL;
+            node_new->ip_list = ip_new;
+        } else if (startsWith("end_node", dst[i])) {
+            struct Node *node_next = (struct Node*)malloc(sizeof(struct Node));
+            node_new->next_node = node_next;
+            node_new = node_new->next_node;
+            prev = prev->next_node;
+        }
+    }
+    prev->next_node = NULL;
+    return header->next_node;
+}
+
+int convert_node_to_buf(struct Node *node, char buf[2048]) {
+     // 遍历node列表，写入
+    struct Node *p;
+    struct IP *ip;
+    int offset = 0;
+    // static char buf[2048];
+    for(p = node; p != NULL;p = p->next_node) {
+        // 标记开始
+        offset += sprintf(buf + offset, "NODE\n");
+        
+        // 正式写入
+        offset += sprintf(buf + offset, "id: %d\n", p->id);
+        offset += sprintf(buf + offset, "node_count: %d\n", p->node_count);
+        offset += sprintf(buf + offset, "reliable: %d\n", p->reliable);
+        offset += sprintf(buf + offset, "ip_list\n");
+        // 遍历ip列表
+        for (ip = p->ip_list; ip != NULL; ip = ip->next_ip) {
+            // printf("ip: %s\n", ip->ip);
+            // printf("ip_type: %s\n", ip->type);
+            // printf("s_count: %d\n", ip->s_count);
+            offset += sprintf(buf + offset, "ip: %s\n", ip->ip);
+            offset += sprintf(buf + offset, "ip_type: %s\n", ip->type);
+            offset += sprintf(buf + offset, "s_count: %d\n", ip->s_count);
+        }
+        offset += sprintf(buf + offset, "ip_list_ends\n");
+        offset += sprintf(buf + offset, "end_node\n");
+    }
+    return offset;
+}
+
+int split(char dst[][80], char *str, const char *spl) {
+    int n = 0;
+    char *result = NULL;
+    result = strtok(str, spl);
+    while( result != NULL )
+    {
+        strcpy(dst[n++], result);
+        result = strtok(NULL, spl);
+    }
+    return n;
 }
 
 // int main() {
-//     struct Node node;
-//     bzero(&node, sizeof(node));
-//     node.id = 1;
-//     node.node_count = 1;
-//     struct IP ip1;
-//     bzero(&ip1, sizeof(ip1));
-//     strcpy(ip1.ip, "127.0.0.1");
-//     strcpy(ip1.type, "clientIP");
-//     ip1.s_count = 1;
-//     node.ip_list = &ip1;
+//     struct Node *node1 = file2struct("node_info.txt");
+//     struct Node *node2 = file2struct("node_info.txt");
 
-//     // struct Node node2;
-//     // bzero(&node2, sizeof(node2));
-//     // node2.id = 1;
-//     // node2.node_count = 1;
-//     // struct IP ip3;
-//     // bzero(&ip3, sizeof(ip3));
-//     // strcpy(ip3.ip, "127.0.0.1");
-//     // strcpy(ip3.type, "serverIP");
-//     // ip3.s_count = 2;
-//     // node2.ip_list = &ip3;
-
-//     // int result = node_merge(&node, &node2);
-
-//     // struct Node *p = NULL;
-//     // for (p = &node; p != NULL; p = p->next_node) {
-//     //     printf("node id: %d, node_count: %d\n", p->id, p->node_count);
-//     //     struct IP *tmp = NULL;
-//     //     for (tmp = p->ip_list;tmp != NULL;tmp = tmp->next_ip) {
-//     //         printf("ip: %s, type: %s, s_count: %d\n", tmp->ip, tmp->type, tmp->s_count);
-//     //     }
-//     // }
-
-    
-
-//     struct2file(&node, "node_info.txt");
-//     struct Node *nodefromfile = file2struct("node_info.txt");
-    
-//     struct Node *p;
-//     struct IP *ip;
-//     for(p = nodefromfile; p != NULL;p = p->next_node) {
-//         // 标记开始
-//         printf("Node start\n");
-//         // 正式写入
-//         printf("id: %d\n", p->id);
-//         printf("node_count: %d\n", p->node_count);
-
-//         printf("ip_list\n");
-//         // 遍历ip列表
-//         for (ip = p->ip_list; ip != NULL; ip = ip->next_ip) {
-//             printf("ip: %s\n", ip->ip);
-//             printf("ip_type: %s\n", ip->type);
-//             printf("s_count: %d\n", ip->s_count);
-//         }
-//         printf("ip_list_end\n");
-//     }
-
+//     print_node(node2);
+//     node_merge(node1, node2);
+//     // print_node(node1);
 // }

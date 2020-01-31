@@ -10,7 +10,6 @@
 #include "message.h"
 
 int read_file_to_buf(struct Message *message, char *file_name) {
-    // message = (struct Message*)malloc(sizeof(struct Message));
     FILE *fp = fopen(file_name, "r");
     int newLen = -1;
     if (fp != NULL) {
@@ -27,7 +26,7 @@ int read_file_to_buf(struct Message *message, char *file_name) {
 }
 
 int write_buf_to_file(struct Message *message, char *file_name, size_t buf_len) {
-    FILE *fp = fopen(file_name, "w");
+    FILE *fp = fopen(file_name, "w+");
     int writeLen;
     if (fp != NULL) {
         writeLen = fwrite(message->buf, sizeof(char), buf_len, fp);

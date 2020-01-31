@@ -25,7 +25,7 @@ uint8_t threadflag;                  // 线程直接用于交互的全局信号�
 int server_socket_fd;
 struct sockaddr_in server_addr;
 int Listen_PORT;
-struct Node node;       // 集群信息
+struct Node *local_node;
 
 int free_program() {
     if(-1 != server_socket_fd){
@@ -100,14 +100,25 @@ void *thread_receive_pack(void *arg) {
             lt = localtime (&t);//转为时间结构。
             printf("%d/%d/%d %d:%d:%d [%s:%d] register request from server.\n",lt->tm_year+1900, lt->tm_mon, lt->tm_mday, lt->tm_hour, lt->tm_min, lt->tm_sec, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
             fflush(stdout);
-           
-            printf("msg: %s\n", msg.buf);
-            // todo merge_node
+
+            struct Node *recv_node = convert_buf_to_node(msg.buf);
+            local_node = file2struct(FILENAME);
+
+            // 合并register信息和本地节点信息，并保存
+            node_merge(local_node, recv_node);
+            struct2file(local_node, FILENAME);
+
+            // 生成返回Message
             struct Message reply_msg;
             bzero(&reply_msg, sizeof(reply_msg));
-            read_file_to_buf(&reply_msg, FILENAME);
+            int len = convert_node_to_buf(local_node, reply_msg.buf);
+
+            printf ("REPLY MESSAGE: \n");
+            printf(reply_msg.buf);
+            reply_msg.size = len;
             strcpy(reply_msg.type, "R_Register");
 
+            // R_Register
             if (send_msg_over_socket(&reply_msg, new_server_socket_fd) < 0) {
                 printf("send message failed\n");
             }
@@ -129,6 +140,10 @@ int main(int argc,char *argv[])
     }
     Listen_PORT = atoi(argv[1]);//目标端口
     // strcpy(register_string,argv[2]);//send_string
+    local_node = (struct Node*)malloc(sizeof(struct Node));
+    local_node = file2struct(FILENAME);
+    printf("LOCAL NODE: \n");
+    print_node(local_node);
     init_program();
     int res;
     res = pthread_create(&(a_thread[0]), NULL, thread_receive_pack, NULL);  /// 创建线程用于接收客户端发来是数据包

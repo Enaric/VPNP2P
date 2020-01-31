@@ -18,7 +18,7 @@
 #define NUM_THREADS 4      // 最多创建4个子线程, 1个用于接收数据[可能是服务器或者其它peer的](会block), 2个用于定期punching, 并给服务器发消息保持连接.
 #define SRV_IP "127.0.0.1"
 #define PORT 3389
-#define FILENAME "node_info_client.txt"
+#define FILENAME "node_info.txt"
 #define BUFLEN 2048
 
 pthread_t a_thread[NUM_THREADS];     // 缓存线程
@@ -27,7 +27,7 @@ int client_socket_fd;
 struct sockaddr_in client_addr;
 struct sockaddr_in server_addr;
 int Listen_PORT;
-struct Node local_node;             // 本地节点
+struct Node *local_node;             // 本地节点
 
 int free_program() {
     if(-1 != client_socket_fd){
@@ -90,7 +90,6 @@ int generate_info() {
             ip = &ip_new;
         }
     }
-    printf("ip: %s\n", tmp_node.ip_list->ip);
     // 将生成的节点信息写到文件
     struct2file(&tmp_node, FILENAME);
 
@@ -100,7 +99,7 @@ int generate_info() {
 }
 
 // 注册函数 server传回的集群信息会保存到node中
-int register_node(char *target_ip) {
+struct Node* register_node(char *target_ip) {
     threadflag = 0;
 
     bzero(&server_addr, sizeof(server_addr));
@@ -121,6 +120,7 @@ int register_node(char *target_ip) {
         exit(0);
     }
 
+    // 读入本地节点信息
     struct Message message;
     strcpy(message.type, "Register");
     read_file_to_buf(&message, FILENAME);
@@ -136,7 +136,10 @@ int register_node(char *target_ip) {
     if (recv_msg_over_socket(&reply_msg, client_socket_fd) < 0) {
         printf("receive message failed\n");
         exit(1);
-    } 
+    }
+
+    // 保存服务端返回消息中的节点信息
+    write_buf_to_file(&reply_msg, FILENAME, reply_msg.size - 1);
 
     time_t t;
     struct tm * lt;
@@ -147,8 +150,10 @@ int register_node(char *target_ip) {
 
     close(client_socket_fd);
 
-    //return converted_node;
-    return 1;
+    struct Node *ret_node = (struct Node*)malloc(sizeof(struct Node));
+    ret_node = convert_buf_to_node(reply_msg.buf);
+
+    return ret_node;
 }
 
 int send_recheck_msg(char *target_ip) {
@@ -191,7 +196,7 @@ int judge_local_ip() {
     struct IP *ip;
     char **node_ip_list = malloc(IP_LIST_SIZE * sizeof(char*));
     int pos = 0;
-    for (ip = local_node.ip_list;ip != NULL;ip = ip->next_ip) {
+    for (ip = local_node->ip_list;ip != NULL;ip = ip->next_ip) {
         node_ip_list[pos] = ip->ip;
         pos++;
     }
@@ -220,45 +225,51 @@ int join(char *server_ip, int use_cache) {
     } else {
         printf("infofile exist\n");
     }
-    local_node = *file2struct(FILENAME);
+    
     if (use_cache) {
         // 校对本地集群缓存信息
         if(!judge_local_ip()) {
             // 更新 node count
-            local_node.node_count += 1;
-            free(local_node.ip_list);
-            local_node.ip_list = NULL;
-            free(local_node.next_node);
-            local_node.next_node = NULL;
+            local_node->node_count += 1;
+            free(local_node->ip_list);
+            local_node->ip_list = NULL;
+            free(local_node->next_node);
+            local_node->next_node = NULL;
 
-            struct2file(&local_node, FILENAME);
+            struct2file(local_node, FILENAME);
         }
     }
 
     // 向server发送注册信息
     // todo 保存一份server发回的node信息
-    register_node(server_ip);
-    struct Node *server_node = file2struct(FILENAME);
-    struct Node tmp_node;
-    bzero(&tmp_node, sizeof(tmp_node));
+    struct Node *server_node = register_node(server_ip);
+    
+    // todo 如果发生冲突
+    local_node = (struct Node*)malloc(sizeof(struct Node));
+    local_node = file2struct(FILENAME);
+    printf("LOCAL NODE\n\n");
+    print_node(local_node);
+    node_merge(local_node, server_node);
+    
+    struct Node *tmp_node = (struct Node*)malloc(sizeof(struct Node));
     struct Node *p;
-    for (p = server_node;p != NULL;p = p->next_node) {
-        printf("server_node id: %d\n", p->id);
+    for (p = local_node;p != NULL;p = p->next_node) {
         struct IP *ip;
         for (ip = p->ip_list;ip != NULL;ip = ip->next_ip) {
-            printf("ip is: %s\n", ip->ip);
             if (strcmp(ip->ip, server_ip) == 0) {
                 printf("is server ip, should skip\n");
                 continue;
             }
+            // todo 判断是否为本机ip, 如果是的话，就不注册
+            if (strcmp(ip->ip, "127.0.0.1") == 0) {
+                continue;
+            }
             if (is_intranet(ip->ip)) {
-                struct Node *tmp = NULL;
                 printf("should merge\n");
                 init_socket();
-                register_node(ip->ip);
-
-                tmp = file2struct(FILENAME);
-                if(node_merge(&tmp_node, tmp) == -1) {
+                printf("ip: %s\n", ip->ip);
+                tmp_node = register_node(ip->ip);
+                if(node_merge(local_node, tmp_node) == -1) {
                     // todo recheck
                     send_recheck_msg(ip->ip);
                 }
@@ -266,10 +277,7 @@ int join(char *server_ip, int use_cache) {
         }
     }
 
-    if (node_merge(server_node, &tmp_node) == -1) {
-        printf("node merge failed\n");
-        exit(1);
-    }
+    struct2file(local_node, FILENAME);
 
     if (server_node == NULL) { free(server_node); server_node = NULL; }
     return 0;
