@@ -232,6 +232,8 @@ int node_merge(struct Node* node1, struct Node* node2) {
             p->node_count = ptr2->node_count;
             p->reliable = ptr2->reliable;
             p->ip_list = ptr2->ip_list;
+            struct Node *p_next = (struct Node*)malloc(sizeof(struct Node));
+            p->next_node = p_next;
             p = p->next_node;
             prev = prev->next_node;
         }
@@ -375,10 +377,10 @@ int split(char dst[][80], char *str, const char *spl) {
     return n;
 }
 
-int main() {
-    struct Node *node1 = file2struct("node_info.txt");
-    struct Node *node2 = file2struct("test_info.txt");
-    //print_node(node1);
-    node_merge(node1, node2);
-    print_node(node1);
-}
+// int main() {
+//     struct Node *node1 = file2struct("node_info.txt");
+//     struct Node *node2 = file2struct("test_info.txt");
+//     //print_node(node1);
+//     node_merge(node1, node2);
+//     print_node(node1);
+// }

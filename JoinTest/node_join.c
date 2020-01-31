@@ -125,12 +125,13 @@ struct Node* register_node(char *target_ip) {
     strcpy(message.type, "Register");
     read_file_to_buf(&message, FILENAME);
 
+    printf("message content: %s\n", message.buf);
+
     // 向目标server发送register信息
     if (send_msg_over_socket(&message, client_socket_fd) < 0) {
         printf("send message failed\n");
         exit(1);
     }
-    printf("here");
     // 接收server传回的信息
     struct Message reply_msg;
     if (recv_msg_over_socket(&reply_msg, client_socket_fd) < 0) {
