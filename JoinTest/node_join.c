@@ -18,7 +18,7 @@
 #define NUM_THREADS 4      // 最多创建4个子线程, 1个用于接收数据[可能是服务器或者其它peer的](会block), 2个用于定期punching, 并给服务器发消息保持连接.
 #define SRV_IP "127.0.0.1"
 #define PORT 3389
-#define FILENAME "JoinTest/node_info.txt"
+#define FILENAME "node_info.txt"
 #define BUFLEN 2048
 
 pthread_t a_thread[NUM_THREADS];     // 缓存线程
