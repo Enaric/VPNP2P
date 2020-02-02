@@ -10,7 +10,7 @@
 #include <time.h>
 #include <float.h>
 #include <time.h>
-#include "node_info.h"
+#include "../NodeInfo/node_info.h"
 #include "../Util/message.h"
 
 #define BUFLEN 2048

@@ -12,7 +12,7 @@
 #include <time.h>
 #include "../Util/util.h"
 #include "../Util/message.h"
-#include "node_info.h"
+#include "../NodeInfo/node_info.h"
 
 #define NPACK 10
 #define NUM_THREADS 4      // 最多创建4个子线程, 1个用于接收数据[可能是服务器或者其它peer的](会block), 2个用于定期punching, 并给服务器发消息保持连接.

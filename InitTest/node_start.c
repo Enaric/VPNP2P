@@ -8,36 +8,15 @@
 #include <unistd.h> // for close
 #include "../Util/util.h"
 #include "../Util/message.h"
-#include "node_info.h"
+#include "../NodeInfo/node_info.h"
 
-int client_socket_fd;
-struct sockaddr_in client_addr;
-struct sockaddr_in server_addr;
+#define FILENAME "node_info.txt"
+
 // int Listen_PORT;
 struct Node *local_node;             // 本地节点
 
-int free_program() {
-    if(-1 != client_socket_fd){
-        close(client_socket_fd);
-        client_socket_fd = -1;
-    }
-    return 0;
-}
-
-int init_socket() {
-    bzero(&client_addr, sizeof(client_addr));
-    client_addr.sin_family = AF_INET;
-    client_addr.sin_addr.s_addr = htons(INADDR_ANY);
-    client_addr.sin_port = htons(0); 
-
-    client_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (client_socket_fd < 0) {
-        perror("Create socket failed");
-        exit(1);
-    }
-}
-
-int generate_info() {
+// todo 写到util中实现复用
+int generate_node_info(char *server_ip) {
     // 标定内网ip
     // 生成一个全局的节点信息数据结构
     // 可以提供给后面的流程使用
@@ -68,32 +47,18 @@ int generate_info() {
             ip = &ip_new;
         }
     }
+    // 增加server ip信息到节点
+    struct IP *ip_server = (struct IP *)malloc(sizeof(struct IP));
+    strcpy(ip_server->type, "serverIP");
+    strcpy(ip_server->ip, server_ip);
+    ip_server->s_count = 0;
+    ip->next_ip = ip_server;
+    ip = ip->next_ip;
     // 将生成的节点信息写到文件
-    struct2file(&tmp_node, "InitTest/node_info.txt");
+    struct2file(&tmp_node, FILENAME);
 
     if (ip != NULL) { free(ip); ip = NULL; }
     if (local_ip_list != NULL) { free(local_ip_list); local_ip_list = NULL; }
-    return 0;
-}
-
-// 遍历local_node 的ip列表，确认每个local ip都存在
-// 如果缓存中ip和本地ip对应，返回true，否则返回false
-int judge_local_ip() {
-    struct IP *ip;
-    char **node_ip_list = malloc(IP_LIST_SIZE * sizeof(char*));
-    int pos = 0;
-    for (ip = local_node->ip_list;ip != NULL;ip = ip->next_ip) {
-        node_ip_list[pos] = ip->ip;
-        pos++;
-    }
-
-    if (ip_match(node_ip_list, pos)) {
-        // 沿用之前的infofile
-        // todo 更新打洞信息
-        return 1;
-    } 
-    
-    if (node_ip_list != NULL) { free(node_ip_list); node_ip_list = NULL; } 
     return 0;
 }
 
@@ -102,34 +67,23 @@ int judge_local_ip() {
 // server_ip 使用的自身的server ip(可以多个，可以设计成list)
 // use_cache 可选参数，是否读取本地的集群信息
 int start(char *server_ip, int use_cache) {
-    init_socket();
 
-    if (!fopen("InitTest/node_info.txt", "r")) {
+    if (!fopen(FILENAME, "r")) {
         // 不存在infofile
         // 生成本地infofile
         printf("infofile not exist\n");
-        generate_info();
+        generate_node_info(server_ip);
     } else {
         printf("infofile exist\n");
     }
     
     if (use_cache) {
-        // 校对本地集群缓存信息
-        if(!judge_local_ip()) {
-            // 更新 node count
-            local_node->node_count += 1;
-            free(local_node->ip_list);
-            local_node->ip_list = NULL;
-            free(local_node->next_node);
-            local_node->next_node = NULL;
-
-            struct2file(local_node, "InitTest/node_info.txt");
-        }
+       // todo
     }
     return 0;
 }
 
-int main(int argc,char *argv[]) {
-    start(argv[1], 0);
-    return 0;
-}
+// int main(int argc,char *argv[]) {
+//     start(argv[1], 0);
+//     return 0;
+// }

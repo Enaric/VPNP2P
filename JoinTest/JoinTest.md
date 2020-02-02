@@ -17,5 +17,5 @@ main函数中默认会调用node_join.c中的join函数
 
 ## 编译命令:
 
-`gcc main.c JoinTest/node_join.c JoinTest/node_info.c Util/message.c Util/util.c -o main`
-`gcc node_join_server.c ../Util/message.c -pthread -o server`
+`gcc main.c JoinTest/node_join.c NodeInfo/node_info.c Util/message.c Util/util.c -o main`
+`gcc node_join_server.c ../Util/message.c ../NodeInfo/node_info.c -pthread -o server`
