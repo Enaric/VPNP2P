@@ -10,9 +10,9 @@
 #include "../Util/message.h"
 #include "../NodeInfo/node_info.h"
 
+//路径暂时使用默认路径
 #define FILENAME "node_info.txt"
 
-// int Listen_PORT;
 struct Node *local_node;             // 本地节点
 
 // todo 写到util中实现复用
