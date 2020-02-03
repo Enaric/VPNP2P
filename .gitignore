@@ -3,3 +3,6 @@ Util/message
 Util/util
 JoinTest/node_info
 JoinTest/server
+
+.DS_Store
+*/.DS_Store
