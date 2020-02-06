@@ -8,4 +8,4 @@ client:
   
 server:  
 
-`gcc JoinTest/node_join_server.c Util/message.c NodeInfo/node_info.c -pthread -o server`
+`gcc JoinTest/node_join_server.c Util/message.c NodeInfo/node_info.c Util/util.c -pthread -o server`

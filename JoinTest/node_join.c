@@ -23,98 +23,58 @@
 
 pthread_t a_thread[NUM_THREADS];     // 缓存线程
 uint8_t threadflag;                  // 线程直接用于交互的全局信号变量, 默认:0, 程序退出:1;
-int client_socket_fd;
-struct sockaddr_in client_addr;
-struct sockaddr_in server_addr;
-int Listen_PORT;
 struct Node *local_node;             // 本地节点
 
-int free_program() {
-    if(-1 != client_socket_fd){
-        close(client_socket_fd);
-        client_socket_fd = -1;
-    }
-    return 0;
-}
+// int generate_info() {
+//     // 标定内网ip
+//     // 生成一个全局的节点信息数据结构
+//     // 可以提供给后面的流程使用
+//     struct Node tmp_node;
+//     bzero(&tmp_node, sizeof(tmp_node));
+//     tmp_node.id = generate_id(); // todo 全局唯一id生成器
+//     tmp_node.node_count = 1;
+//     tmp_node.reliable = RELIABLE;
+//     struct IP *ip = (struct IP *)malloc(sizeof(struct IP));
+//     tmp_node.ip_list = ip;
+//     char **local_ip_list = get_local_ip();
 
-int init_socket() {
-    bzero(&client_addr, sizeof(client_addr));
-    client_addr.sin_family = AF_INET;
-    client_addr.sin_addr.s_addr = htons(INADDR_ANY);
-    client_addr.sin_port = htons(0); 
+//     for(int i = 0;i < IP_LIST_SIZE;i++) {
+//         if (local_ip_list[i] == NULL) {
+//             break;
+//         }
+//         strcpy(ip->ip, local_ip_list[i]);
+//         if (is_intranet(local_ip_list[i])) {
+//             strcpy(ip->type, "clientIP");
+//         } else {
+//             strcpy(ip->type, "unknownIP");
+//         }
+//         ip->s_count = 0;
 
+//         if (local_ip_list[i+1] != NULL) {
+//             struct IP ip_new;
+//             bzero(&ip_new, sizeof(ip_new));
+//             ip->next_ip = &ip_new;
+//             ip = &ip_new;
+//         }
+//     }
+//     // 将生成的节点信息写到文件
+//     struct2file(&tmp_node, FILENAME);
+
+//     if (ip != NULL) { free(ip); ip = NULL; }
+//     if (local_ip_list != NULL) { free(local_ip_list); local_ip_list = NULL; }
+//     return 0;
+// }
+
+// 注册函数 server传回的集群信息会保存到node中
+struct Node* register_node(char *target_ip) {
+    // 向服务器发起连接
+    int client_socket_fd;
     client_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (client_socket_fd < 0) {
         perror("Create socket failed");
         exit(1);
     }
-}
-
-// Just a function to kill the program when something goes wrong.
-void diep(char *message) {
-    printf("!Error: %s, exit\n",message);fflush(stdout);
-    perror(message);
-    free_program();
-    exit(1);
-}
-
-int generate_info() {
-    // 标定内网ip
-    // 生成一个全局的节点信息数据结构
-    // 可以提供给后面的流程使用
-    struct Node tmp_node;
-    bzero(&tmp_node, sizeof(tmp_node));
-    tmp_node.id = generate_id(); // todo 全局唯一id生成器
-    tmp_node.node_count = 1;
-    tmp_node.reliable = RELIABLE;
-    struct IP *ip = (struct IP *)malloc(sizeof(struct IP));
-    tmp_node.ip_list = ip;
-    char **local_ip_list = get_local_ip();
-
-    for(int i = 0;i < IP_LIST_SIZE;i++) {
-        if (local_ip_list[i] == NULL) {
-            break;
-        }
-        strcpy(ip->ip, local_ip_list[i]);
-        if (is_intranet(local_ip_list[i])) {
-            strcpy(ip->type, "clientIP");
-        } else {
-            strcpy(ip->type, "unknownIP");
-        }
-        ip->s_count = 0;
-
-        if (local_ip_list[i+1] != NULL) {
-            struct IP ip_new;
-            bzero(&ip_new, sizeof(ip_new));
-            ip->next_ip = &ip_new;
-            ip = &ip_new;
-        }
-    }
-    // 将生成的节点信息写到文件
-    struct2file(&tmp_node, FILENAME);
-
-    if (ip != NULL) { free(ip); ip = NULL; }
-    if (local_ip_list != NULL) { free(local_ip_list); local_ip_list = NULL; }
-    return 0;
-}
-
-// 注册函数 server传回的集群信息会保存到node中
-struct Node* register_node(char *target_ip) {
-    threadflag = 0;
-
-    bzero(&server_addr, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    if(inet_pton(AF_INET, target_ip, &server_addr.sin_addr) == 0)
-    {
-        perror("Server IP Address Error:");
-        exit(1);
-    }
-
-    server_addr.sin_port = htons(PORT);
-    socklen_t server_addr_length = sizeof(server_addr);
-
-    // 向服务器发起连接
-    if(connect(client_socket_fd, (struct sockaddr*)&server_addr, server_addr_length) < 0)
+    if(connect_to_server(client_socket_fd, target_ip, PORT) < 0)
     {
         perror("Can Not Connect To Server IP:");
         exit(0);
@@ -129,9 +89,11 @@ struct Node* register_node(char *target_ip) {
 
     // 向目标server发送register信息
     if (send_msg_over_socket(&message, client_socket_fd) < 0) {
-        printf("send message failed\n");
+        // printf("send message failed\n");
+        perror("Send Message Failed:");
         exit(1);
     }
+    
     // 接收server传回的信息
     struct Message reply_msg;
     if (recv_msg_over_socket(&reply_msg, client_socket_fd) < 0) {
@@ -163,19 +125,14 @@ int send_recheck_msg(char *target_ip) {
     strcpy(msg.type, "Recheck");
     msg.size = 0;
 
-    bzero(&server_addr, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    if(inet_pton(AF_INET, target_ip, &server_addr.sin_addr) == 0)
-    {
-        perror("Server IP Address Error:");
+    int client_socket_fd;
+    client_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_socket_fd < 0) {
+        perror("Create socket failed");
         exit(1);
     }
-
-    server_addr.sin_port = htons(PORT);
-    socklen_t server_addr_length = sizeof(server_addr);
-
-    // 向服务器发起连接
-    if(connect(client_socket_fd, (struct sockaddr*)&server_addr, server_addr_length) < 0)
+    
+    if(connect_to_server(client_socket_fd, target_ip, PORT) < 0)
     {
         perror("Can Not Connect To Server IP:");
         exit(0);
@@ -216,16 +173,17 @@ int judge_local_ip() {
 // server_ip 目标server的ip
 // use_cache 是否使用缓存
 int join(char *server_ip, int use_cache) {
-    init_socket();
-
     if (!fopen(FILENAME, "r")) {
         // 不存在infofile
         // 生成本地infofile
         printf("infofile not exist\n");
-        generate_info();
+        local_node = generate_local_node();
+        print_node(local_node);
+        struct2file(local_node, FILENAME);
     } else {
         printf("infofile exist\n");
     }
+    
     
     if (use_cache) {
         // 校对本地集群缓存信息
@@ -266,7 +224,6 @@ int join(char *server_ip, int use_cache) {
                 continue;
             }
             if (is_intranet(ip->ip)) {
-                init_socket();
                 tmp_node = register_node(ip->ip);
                 if(node_merge(local_node, tmp_node) == -1) {
                     // todo recheck

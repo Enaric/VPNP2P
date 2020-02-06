@@ -12,6 +12,10 @@
 #define IP_SIZE     16
 #define IP_LIST_SIZE 10
 
+struct sockaddr_in client_addr;
+struct sockaddr_in server_addr;
+int Listen_PORT;
+
 // 判断是否为内网ip
 int is_intranet(char *ip);
 
@@ -24,3 +28,5 @@ int ip_list_contains(char **ip_list, int length, char *ip);
 int ip_match(char **ip_list, int length);
 
 int generate_id();
+
+int connect_to_server(int client_socket_fd, char *target_ip, int port);

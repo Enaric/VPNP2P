@@ -21,13 +21,3 @@ ip_type: clientIP
 s_count: 2
 ip_list_ends
 end_node
-NODE
-id: 8186
-node_count: 1
-reliable: 1
-ip_list
-ip: 127.0.0.1
-ip_type: clientIP
-s_count: 0
-ip_list_ends
-end_node

@@ -1,4 +1,7 @@
 #include "node_info.h"
+#include "../Util/util.h"
+
+#define IP_LIST_SIZE 10
 
 int startsWith(const char *pre, const char *str) {
     size_t lenpre = strlen(pre),
@@ -122,7 +125,7 @@ struct Node* file2struct(char *filename) {
             ip_header->next_ip = ip_new;
             ip_new->next_ip = NULL;
             node_new->ip_list = ip_new;
-        } else if (startsWith("end_node", strline)) {
+        } else if (startsWith("end", strline)) {
             struct Node *node_next = (struct Node*)malloc(sizeof(struct Node));
             node_new->next_node = node_next;
             node_new = node_new->next_node;
@@ -202,10 +205,6 @@ int ip_list_merge(struct IP *ip1, struct IP *ip2) {
 // 集群信息合并，结果统一放在第一个node中
 // 如果发生强冲突 返回 -1
 int node_merge(struct Node* node1, struct Node* node2) {
-    // printf("node1: \n");
-    // print_node(node1);
-    // printf("node2: \n");
-    // print_node(node2);
     struct Node *ptr1;
     struct Node *ptr2;
     struct Node *remain = (struct Node*)malloc(sizeof(struct Node));
@@ -243,6 +242,7 @@ int node_merge(struct Node* node1, struct Node* node2) {
     }
     prev->next_node = NULL;
     ptr1->next_node = remain->next_node;
+    return 0;
 }
 
 int contain_node(struct Node *list, struct Node *node) {
@@ -324,7 +324,7 @@ struct Node* convert_buf_to_node(char *buf) {
             ip_header->next_ip = ip_new;
             ip_new->next_ip = NULL;
             node_new->ip_list = ip_new;
-        } else if (startsWith("end_node", dst[i])) {
+        } else if (startsWith("end", dst[i])) {
             struct Node *node_next = (struct Node*)malloc(sizeof(struct Node));
             node_new->next_node = node_next;
             node_new = node_new->next_node;
@@ -377,10 +377,44 @@ int split(char dst[][80], char *str, const char *spl) {
     return n;
 }
 
+struct Node* generate_local_node() {
+    struct Node *node = (struct Node*)malloc(sizeof(struct Node));
+    node->id = generate_id(); // todo 全局唯一id生成器
+    node->node_count = 1;
+    node->reliable = RELIABLE;
+    struct IP *ip = (struct IP *)malloc(sizeof(struct IP));
+    node->ip_list = ip;
+
+    char **local_ip_list = get_local_ip();
+    for(int i = 0;i < IP_LIST_SIZE;i++) {
+        if (local_ip_list[i] == NULL) {
+            break;
+        }
+        strcpy(ip->ip, local_ip_list[i]);
+        if (is_intranet(local_ip_list[i])) {
+            strcpy(ip->type, "clientIP");
+        } else {
+            strcpy(ip->type, "unknownIP");
+        }
+        ip->s_count = 0;
+
+        if (local_ip_list[i+1] != NULL) {
+            struct IP ip_new;
+            bzero(&ip_new, sizeof(ip_new));
+            ip->next_ip = &ip_new;
+            ip = &ip_new;
+        }
+    }
+
+    return node;
+}
+
 // int main() {
-//     struct Node *node1 = file2struct("node_info.txt");
+//     // struct Node *node1 = file2struct("node_info.txt");
 //     struct Node *node2 = file2struct("test_info.txt");
-//     //print_node(node1);
-//     node_merge(node1, node2);
-//     print_node(node1);
+//     print_node(node2);
+//     // node_merge(node1, node2);
+//     // //print_node(node1);
+//     // print_node(node1);
+//     // struct2file(node1, "test_info.txt");
 // }

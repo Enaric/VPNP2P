@@ -1,5 +1,11 @@
 {
     "files.associations": {
-        "node_info.h": "c"
+        "node_info.h": "c",
+        "util.h": "c",
+        "unistd.h": "c",
+        "string.h": "c",
+        "message.h": "c",
+        "table.h": "c",
+        "node_pair.h": "c"
     }
 }

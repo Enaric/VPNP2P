@@ -75,3 +75,37 @@ int generate_id() {
     srand((unsigned)time(NULL));
     return rand() % 10000 + 1;
 }
+
+int init_socket() {
+    bzero(&client_addr, sizeof(client_addr));
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_addr.s_addr = htons(INADDR_ANY);
+    client_addr.sin_port = htons(0);
+    return 0;
+}
+
+
+
+int connect_to_server(int client_socket_fd, char *target_ip, int port) {
+    init_socket();
+
+    bzero(&server_addr, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    if(inet_pton(AF_INET, target_ip, &server_addr.sin_addr) == 0)
+    {
+        perror("Server IP Address Error:");
+        return -1;
+    }
+
+    server_addr.sin_port = htons(port);
+    socklen_t server_addr_length = sizeof(server_addr);
+
+    // 向服务器发起连接
+    if(connect(client_socket_fd, (struct sockaddr*)&server_addr, server_addr_length) < 0)
+    {
+        perror("Can Not Connect To Server IP:");
+        return -1;
+    }
+    
+    return 0;
+}

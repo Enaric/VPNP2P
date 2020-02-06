@@ -48,3 +48,5 @@ struct Node* convert_buf_to_node(char *buf);
 int convert_node_to_buf(struct Node *node, char buf[2048]);
 
 int split(char dst[][80], char *str, const char *spl);
+
+struct Node* generate_local_node();
