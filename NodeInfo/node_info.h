@@ -10,6 +10,7 @@ struct IP {
     char ip[20];
     char type[20];  //unknownIP / clientIP / serverIP
     int s_count;
+    int validity; // ip信息有效性，1代表可信
     struct IP *next_ip;
 };
 
@@ -50,3 +51,11 @@ int convert_node_to_buf(struct Node *node, char buf[2048]);
 int split(char dst[][80], char *str, const char *spl);
 
 struct Node* generate_local_node();
+
+int ip_list_length(struct IP *ip_list);
+
+// 判断一个ip列表中是否存在某个ip
+int contain_ip(struct IP *ip_list, char *ip);
+
+// 判断两个ip列表是否完全一致
+int ip_list_identical(struct IP *ip_list1, struct IP *ip_list2);

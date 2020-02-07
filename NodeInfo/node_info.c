@@ -48,6 +48,7 @@ int struct2file(struct Node *node, char *filename) {
             fprintf(fp, "ip: %s\n", ip->ip);
             fprintf(fp, "ip_type: %s\n", ip->type);
             fprintf(fp, "s_count: %d\n", ip->s_count);
+            fprintf(fp, "validity: %d\n", ip->validity);
         }
         fprintf(fp, "ip_list_ends\n");
         fprintf(fp, "end_node\n");
@@ -111,7 +112,9 @@ struct Node* file2struct(char *filename) {
         } else if (startsWith("s_count: ", strline)) {
             strline += 9;
             ip_new->s_count = atoi(strline);
-            // printf("this is s_count: %d\n", atoi(strline));
+        } else if (startsWith("validity: ", strline)) {
+            strline += 10;
+            ip_new->validity = atoi(strline);
             // 创建一个新的ip struct
             ip_header = ip_header->next_ip;
             struct IP *ip_tmp = (struct IP*)malloc(sizeof(struct IP));
@@ -263,7 +266,7 @@ void print_node(struct Node *node) {
         printf("node id: %d, node count: %d\n", ptr->id, ptr->node_count);
         printf("node ip list: \n");
         for (ip = ptr->ip_list;ip != NULL;ip = ip->next_ip) {
-            printf("ip: %s, type: %s, s_count: %d\n", ip->ip, ip->type, ip->s_count);
+            printf("ip: %s, type: %s, s_count: %d, validity: %d\n", ip->ip, ip->type, ip->s_count, ip->validity);
         }
     }
 }
@@ -311,6 +314,10 @@ struct Node* convert_buf_to_node(char *buf) {
             char s_count[10];
             memcpy(s_count, dst[i] + 9, 10);
             ip_new->s_count = atoi(s_count);
+        } else if (startsWith("validity: ", dst[i])) {
+            char validity[10];
+            memcpy(validity, dst[i] + 10, 10);
+            ip_new->validity = atoi(validity);
 
             ip_header = ip_header->next_ip;
             struct IP *ip_tmp = (struct IP*)malloc(sizeof(struct IP));
@@ -358,6 +365,7 @@ int convert_node_to_buf(struct Node *node, char buf[2048]) {
             offset += sprintf(buf + offset, "ip: %s\n", ip->ip);
             offset += sprintf(buf + offset, "ip_type: %s\n", ip->type);
             offset += sprintf(buf + offset, "s_count: %d\n", ip->s_count);
+            offset += sprintf(buf + offset, "validity: %d\n", ip->validity);
         }
         offset += sprintf(buf + offset, "ip_list_ends\n");
         offset += sprintf(buf + offset, "end_node\n");
@@ -397,7 +405,7 @@ struct Node* generate_local_node() {
             strcpy(ip->type, "unknownIP");
         }
         ip->s_count = 0;
-
+        ip->validity = 1;
         if (local_ip_list[i+1] != NULL) {
             struct IP ip_new;
             bzero(&ip_new, sizeof(ip_new));
@@ -409,10 +417,44 @@ struct Node* generate_local_node() {
     return node;
 }
 
+int ip_list_length(struct IP *ip_list) {
+    int length = 0;
+    struct IP *ptr;
+    for (ptr = ip_list; ptr != NULL; ptr = ptr->next_ip) {
+        length++;
+    }
+    return length;
+}
+
+int contain_ip(struct IP *ip_list, char *ip) {
+    struct IP *ptr;
+    for (ptr = ip_list; ptr != NULL; ptr = ptr->next_ip) {
+        if (strcmp(ptr->ip, ip) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int ip_list_identical(struct IP *ip_list1, struct IP *ip_list2) {
+    if (ip_list_length(ip_list1) != ip_list_length(ip_list2)) {
+        return 0;
+    }
+    struct IP *ptr;
+    for (ptr = ip_list1; ptr != NULL; ptr = ptr->next_ip) {
+        // ip_list2中不包含ip_list1中的某个ip，直接返回不一致
+        if (!contain_ip(ip_list2, ptr->ip)) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 // int main() {
 //     // struct Node *node1 = file2struct("node_info.txt");
 //     struct Node *node2 = file2struct("test_info.txt");
 //     print_node(node2);
+//     struct2file(node2, "test_for_validity.txt");
 //     // node_merge(node1, node2);
 //     // //print_node(node1);
 //     // print_node(node1);
