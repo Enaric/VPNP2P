@@ -1,7 +1,9 @@
 
 #define BUF_SIZE 1024 * 64
-#define TYPE_SIZE 20
-#define FILE_SIZE 1<<19 // 0.5MB，因为socket package大小限制暂时无法使用1MB 
+#define TYPE_SIZE 40
+#define FILE_SIZE 1<<19 // 0.5MB，因为socket package大小限制暂时无法使用1MB
+#define REGISTER "register" // 注册
+#define R_REGISTER "r_register" // 回复注册
 #define REGULAR_UPDATE "regular_update"
 #define REGULAR_UPDATE_RETURN "regular_update_return"
 #define WIDTH_TEST "width_test"

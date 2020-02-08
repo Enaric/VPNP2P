@@ -14,15 +14,7 @@
 #include "../NodeInfo/node_pair.h"
 #include "../NodeInfo/table.h"
 
-
 #define PORT 3389
-#define KB 1<<10
-
-char buf[64 * KB]; // 全局变量数组，用于带宽测试
-// todo 应该会有一个全局的local_node
-struct Node *local_node;
-
-
 
 // 本地ip刷新
 void local_ip_refresh() {
@@ -44,6 +36,7 @@ void local_ip_refresh() {
     
     // 将local_node中的ip列表替换为刷新得到的ip列表
     local_node->ip_list = current_ip_list;
+    printf("local_ip_refreshed\n");
 }
 
 // 刷路由
@@ -158,21 +151,21 @@ void router_refresh(struct Node *fromNode, struct Node *toNode) {
 //    strcpy(ip_list->type, "clientIP");
 //    ip_list->s_count = 0;
 //    ip_list->validity = 1;
-//    
+//
 //    struct IP *next_ip = (struct IP *)malloc(sizeof(struct IP));
 //    strcpy(next_ip->ip, "127.0.0.3");
 //    strcpy(next_ip->type, "serverIP");
 //    next_ip->s_count = 0;
 //    next_ip->validity = 1;
-//    
+//
 //    ip_list->next_ip = next_ip;
-//    
+//
 //    local_node = (struct Node *)malloc(sizeof(struct Node));
 //    local_node->ip_list = ip_list;
 //    local_node->node_count = 0;
 //    local_node->reliable = 1;
 //    local_node->next_node = NULL;
-//    
+//
 //    print_node(local_node);
 //    local_ip_refresh();
 //    printf("\n\n");

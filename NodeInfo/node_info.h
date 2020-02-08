@@ -6,6 +6,9 @@
 #define RELIABLE 1
 #define UNRELIABLE 0
 
+struct Node *local_node; // 本地集群信息 todo 线程安全问题
+int local_node_id; // 标识本地节点id
+
 struct IP {
     char ip[20];
     char type[20];  //unknownIP / clientIP / serverIP

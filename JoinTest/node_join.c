@@ -23,7 +23,6 @@
 
 pthread_t a_thread[NUM_THREADS];     // 缓存线程
 uint8_t threadflag;                  // 线程直接用于交互的全局信号变量, 默认:0, 程序退出:1;
-struct Node *local_node;             // 本地节点
 
 // 注册函数 server传回的集群信息会保存到node中
 struct Node* register_node(char *target_ip) {
@@ -137,7 +136,7 @@ int join(char *server_ip, int use_cache) {
         // 不存在infofile
         // 生成本地infofile
         printf("infofile not exist\n");
-        local_node = generate_local_node();
+        generate_local_node();
         print_node(local_node);
         struct2file(local_node, FILENAME);
     } else {
@@ -164,23 +163,18 @@ int join(char *server_ip, int use_cache) {
     struct Node *server_node = register_node(server_ip);
     
     // todo 如果发生冲突
-    local_node = (struct Node*)malloc(sizeof(struct Node));
-    local_node = file2struct(FILENAME);
     printf("LOCAL NODE: \n");
     print_node(local_node);
+    // 合并本地集群信息和server传回的集群信息
     node_merge(local_node, server_node);
     
     struct Node *tmp_node = (struct Node*)malloc(sizeof(struct Node));
     struct Node *p;
-    for (p = local_node;p != NULL;p = p->next_node) {
+    for (p = server_ip;p != NULL;p = p->next_node) {
         struct IP *ip;
         for (ip = p->ip_list;ip != NULL;ip = ip->next_ip) {
             if (strcmp(ip->ip, server_ip) == 0) {
                 printf("is server ip, should skip\n");
-                continue;
-            }
-            // todo 判断是否为本机ip, 如果是的话，就不注册
-            if (strcmp(ip->ip, "127.0.0.1") == 0) {
                 continue;
             }
             if (is_intranet(ip->ip)) {

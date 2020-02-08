@@ -414,6 +414,8 @@ struct Node* generate_local_node() {
         }
     }
 
+    local_node = node;
+    local_node_id = node->id;
     return node;
 }
 
