@@ -569,11 +569,19 @@ NodeB如果能收到，记录下接收到的信息[recvIP=IP,message=[NodeA:regu
 
 如果recvIP不是NodeA的IP地址，则更新路由信息[NodeA,NodeB]={NodeA->NodeB=[Y]recvIP}。
 
-注：N代表没有经过路由转换，Y代表经过路由转换。
+*注：
+
+A.N代表没有经过路由转换，Y代表经过路由转换。
+
+B.NodeA向NodeB发消息，如果消息顺利到达，NodeB测会接收到一条message。message中包含这个消息的内容，这个消息从哪个IP发过来（即recvIP）。如果recvIP是NodeA的IP地址之一，表示NodeA向NodeB发消息时没有经过网络地址转换。如果recvIP不是NodeA的IP地址，那么此消息经过了网络地址转换。
+
+C.网络地址转换就是一个关键的路由信息。
 
 [2]NodeA如果接收到NodeB返回的消息[message=[NodeB:regular_update_return]]，记录接收到消息的时间T2，时延delay = (T2-T1)/2，并将NodeA->NodeB维护在直接通信列表。
 
 [3] 测带宽，30分钟后，NodeA向NodeB发送一个1MB的文件[NodeA:width_test]，记录下发送时的时间T3，NodeB 如果收到，立刻返回信号，NodeA收到[NodeB:width_test_return]，记录下收到返回信号的时间T4，则带宽计算为width = 1MB/(T4-T3-delay*2)。更新集群信息。
+
+*注：这个若干时间可以先暂定为30分钟，这个目的是为了避免不同的测试之间产生影响。其实时间可以设置更短。
 
 ##### 集群信息更新
 
