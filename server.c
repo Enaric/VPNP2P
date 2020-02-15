@@ -183,6 +183,7 @@ void handle_router_refresh() {
     printf("router refreshed\n");
 }
 
+// 定时任务线程，负责进行定时任务
 void *thread_cron_job(void *arg) {
     while(1) {
         sleep(3600);
@@ -201,7 +202,7 @@ int main(int argc,char *argv[])
     Listen_PORT = atoi(argv[1]);//目标端口
     init_program();
     pthread_create(&(a_thread[1]), NULL, thread_cron_job, NULL);
-    pthread_create(&(a_thread[0]), NULL, thread_receive_pack, NULL);  /// 创建线程用于接收客户端发来是数据包
+    pthread_create(&(a_thread[0]), NULL, thread_receive_pack, NULL);
     pthread_join(a_thread[0], NULL);
     pthread_join(a_thread[1], NULL);
     // free_program();

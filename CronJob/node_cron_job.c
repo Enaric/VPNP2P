@@ -129,6 +129,9 @@ void router_refresh(struct Node *fromNode, struct Node *toNode) {
         double width = (512.0 / (duration - delay * 2)) * 1000;
 
         W w = create_width_delay(delay, width);
+        
+        // 将时延，带宽信息保存到table中
+        // key = NodeA-->NodeB:ip, value = delay, width
         Table_put(table, pair, w);
     }
     void *value = Table_get(table, tmpPair);
